@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 
 //  Не получилось у меня вынести реализвцию функций из класса. Пробовал в таком виде:
 //  template <typename Type>
@@ -127,6 +128,12 @@ class SingleLinkedList
         // приводит к неопределённому поведению
         [[nodiscard]] reference operator*() const noexcept
         {
+  // ЗАМЕЧАНИЕ: Стоит добавить assert, что адрес, на который указывает внутреннее поле ненулевой(не nullptr), 
+  // чтобы отлавливать выход за пределы списка
+  // 
+  //  Пояснение: Согласен. В условии задания было сказано не выполнять проверок. Поправил. 
+   // И аналогичные замечания везде учёл ниже.
+            assert(node_ != nullptr);
             return node_->value;
         }
 
@@ -135,6 +142,7 @@ class SingleLinkedList
         // приводит к неопределённому поведению
         [[nodiscard]] pointer operator->() const noexcept 
         {
+            assert(node_ != nullptr);
             return &node_->value;
         }
 
@@ -181,11 +189,11 @@ public:
         SingleLinkedList tmp;
         try
         {
-            for (const Type& t : other)
+            auto it2 = tmp.before_begin();
+            for (auto it1 = other.begin();  it1 != other.end(); ++it1, ++it2)
             {
-                tmp.PushFront(t);
+                tmp.InsertAfter(it2, *it1);
             }
-            tmp.Reverse();
         }
         catch (...)
         {
@@ -215,6 +223,13 @@ public:
     // Обменивает содержимое списков за время O(1)
     void swap(SingleLinkedList& other) noexcept 
     {
+// ЗАМЕЧАНИЕ: Лучше использовать std::swap
+// 
+// Пояснение: Исправил, но интересно чем лучше? короче и более читаемо?
+//         А потом переделал обратно. При отладке выяснил, что std::swap вызывает конструктор по ссылке, 
+// который вызывает метод swap. Наверное что-то у меня не так в коде, но не придумал как это обойти.
+//
+ //       std::swap(*this, other);
         Node* tmp_head = head_.next_node;
         size_t tmp_size = size_;
         head_.next_node = other.head_.next_node;
@@ -312,6 +327,7 @@ public:
      */
     Iterator InsertAfter(ConstIterator pos, const Type& value)
     {
+        assert(pos.node_ != nullptr);
         Node* tmp_ptr = nullptr;
         try
         {
@@ -329,11 +345,14 @@ public:
 
     void PopFront() noexcept
     {
-        Node* tmp_ptr = head_.next_node;
-        head_.next_node = head_.next_node->next_node;
-        delete tmp_ptr;
-        tmp_ptr = nullptr;
-        --size_;
+        if (!IsEmpty())
+        {
+            Node* tmp_ptr = head_.next_node;
+            head_.next_node = head_.next_node->next_node;
+            delete tmp_ptr;
+            tmp_ptr = nullptr;
+            --size_;
+        }
     }
 
     void PushFront(const Type& value)
@@ -355,6 +374,7 @@ public:
     */
     Iterator EraseAfter(ConstIterator pos) noexcept
     {
+        assert(pos.node_ != nullptr);
         Node* tmp_ptr = pos.node_->next_node;
         pos.node_->next_node = tmp_ptr->next_node;
         delete tmp_ptr;
@@ -378,6 +398,15 @@ public:
     //Реверсирует список О(N) -требуется память ещё на один список
     void Reverse()
     {
+//   ЗАМЕЧАНИЕ:  Ну тогда этот метод не нужен - там где вы его применяете, можно сделать проще.
+// Достаточно сделать локальную переменную - итератор на начало списка(head_) и делать InsertAfter 
+//  в цикле в неё, сдвигая её вперед.
+// 
+//  Пояснение: Согласен. Просто по ходу курса сначала нужно было реализовать конструктор по ссылке, 
+// а в следующих уроках нужно было реализовать метод InsertAfter. Соответственно я над работающим конструктором уже не размышлял. 
+// Да и метод Reverse может применяться сам по себе, поэтому я сделал его публичным. По этой причине оставил его. 
+// А конструктор переделал. Предложенный Вами способ логичнее и более экономичен к памяти.
+//
         SingleLinkedList tmp;
         try
         {
